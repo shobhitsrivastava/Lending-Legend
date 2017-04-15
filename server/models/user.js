@@ -32,6 +32,10 @@ var UserSchema = new mongoose.Schema({
         required: true,
         minlength: 6
     },
+    proPic: {
+        required: false,
+        type: String,
+    },
     tokens: [{
         access: {
             type: String,
@@ -120,6 +124,12 @@ UserSchema.methods.removeToken = function (token) {
         }
     });
 };
+
+UserSchema.methods.setProPic = function (picture) {
+    var user = this;
+    user.proPic = picture.filename;
+    user.save();
+}
 
 var User = mongoose.model('User', UserSchema);
 
