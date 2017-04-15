@@ -8,10 +8,11 @@ const mongo = require('mongodb');
 const bcrypt = require('bcryptjs');
 const multer = require('multer');
 const mime = require('mime');
+const path = require('path');
 var storage = multer.diskStorage(
     {
         destination: (req, file, cb) => {
-            cb(null, "server/uploads/");
+            cb(null, "tmp/");
         }, filename: (req, file, cb) => {
             cb(null, file.fieldname + '-' + Date.now() + '.' + mime.extension(file.mimetype));
         }
@@ -39,7 +40,7 @@ var app = express();
 const port = process.env.PORT || 3000;
 
 app.use(bodyParser.json());
-app.use(express.static(`./server/uploads/`));
+app.use(express.static(`tmp/`));
 
 app.listen(port, () => {
     console.log(`Started on port ${port}`);
@@ -76,38 +77,123 @@ app.delete('/users/me/token', authenticate, (req, res) => {
     })
 });
 
-app.post('/multertest', upload.single('testfile'), (req, res) => {
+// app.post('/multertest', upload.single('testfile'), (req, res) => {
+//     var file = req.file;
+//     console.log(file);
+//     Attachment.write({
+//       filename: file.filename,
+//       contentType:'image/jpeg'
+//       },
+//       fs.createReadStream(`./server/uploads/${file.filename}`),
+//       function(error, createdFile){
+//         if (error) {
+//             res.status(400).send(error);
+//         }
+//         res.status(200).send(createdFile);
+//     });
+// });
+
+app.post('/users/me/propic', upload.single('picture'), authenticate, (req, res) => {
     var file = req.file;
-    console.log(file);
+    if (!file) {
+        return res.status(400).send();
+    }
     Attachment.write({
       filename: file.filename,
       contentType:'image/jpeg'
       },
-      fs.createReadStream(`./server/uploads/${file.filename}`),
+      fs.createReadStream(`tmp/${file.filename}`),
       function(error, createdFile){
         if (error) {
             res.status(400).send(error);
         }
+        req.user.setProPic(createdFile);
         res.status(200).send(createdFile);
     });
 });
 
-app.post('/users/me/propic', upload.single('picture'), authenticate, (req, res) => {
-    var file = req.file;
-    req.user.setProPic(file);
-    res.status(200).send();
-});
-
 app.get('/users/me/propic', authenticate, (req, res) => {
-    var fileName = req.user.proPic;
-    if (!fileName){
-        res.status(404).send();
+    var id = req.user.proPic;
+    if (!id){
+        res.status(404).send("The user has no profile picture");
     }
-    var path = `${__dirname}/uploads/${fileName}`;
-    res.status(200).sendFile(path);
+    var readStream = Attachment.readById(id);
+    var writeStream = fs.createWriteStream(`/tmp/${id}`);
+    readStream.pipe(writeStream);
+    res.status(200).sendFile(path.join(__dirname, '../tmp', `${id}`));
+    // Attachment.findOne({
+    //     "_id" : id
+    // },
+    // (err, file) => {
+    //     if (err) {
+    //         return res.status(400).send(err);
+    //     }
+    //     fileName = file.filename;
+    //     var readStream = Attachment.readById(id);
+    //     var writeStream = fs.createWriteStream(`tmp/${fileName}`);
+    //     readStream.pipe(writeStream);
+    //     // var path = `${__dirname}/uploads/${fileName}`;
+    //     // res.status(200).sendFile(path);
+    //     res.status(200).send();
+    // });
 });
 
+app.post('/listings', authenticate, (req, res) => {
+    var listing = new Listing({
+        user: req.user._id,
+        name: req.body.name,
+        description: req.body.description,
+        active: true
+    });
+    listing.save().then((doc) => {
+        res.send(doc);
+    }, (e) => {
+        res.status(400).send(e);
+    });
+});
 
+app.delete('/listings/:id', authenticate, (req, res) => {
+    var id = req.params.id;
+    if (!ObjectID.isValid(id)) {
+        return res.status(404).send();
+    }
+    Listing.findOneAndRemove({
+        _id: id,
+        user: req.user._id
+    }).then((listing) => {
+        if (!listing) {
+            console.log("hello");
+            return res.status(404).send();
+        }
+        res.send({listing});
+    }).catch((e) => res.status(400).send());
+});
+
+app.patch('/listings/:id', authenticate, (req, res) => {
+    var id = req.params.id;
+    var body = _.pick(req.body, ['description', 'active']);
+    if (!ObjectID.isValid(id)) {
+        return res.status(404).send();
+    }
+    if (_.isBoolean(body.completed) && body.completed) {
+        body.completedAt = new Date().getTime();
+    } else {
+        body.completed = false;
+        body.completedAt = null;
+    }
+
+    Todo.findOneAndUpdate({
+        _id: id,
+        _creator: req.user._id
+    }, {$set: body}, {new: true}).then((todo => {
+        if (!todo) {
+            return res.status(404).send();
+        }
+        res.send({todo});
+    })).catch((e) => {
+        res.status(400).send();
+    });
+});
 
 console.log(process.env.NODE_ENV);
 console.log(process.env.MONGODB_URI);
