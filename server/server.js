@@ -1,5 +1,4 @@
 require('./config/config');
-
 const _ = require('lodash');
 const express = require('express');
 const bodyParser = require('body-parser');
@@ -12,7 +11,7 @@ const path = require('path');
 var storage = multer.diskStorage(
     {
         destination: (req, file, cb) => {
-            cb(null, "/tmp/");
+            cb(null, `${process.cwd()}/tmp/`);
         }, filename: (req, file, cb) => {
             cb(null, file.fieldname + '-' + Date.now() + '.' + mime.extension(file.mimetype));
         }
@@ -40,7 +39,7 @@ var app = express();
 const port = process.env.PORT || 3000;
 
 app.use(bodyParser.json());
-// app.use(express.static(`tmp/`));
+app.use(express.static(`${process.cwd()}/tmp/`));
 
 app.listen(port, () => {
     console.log(`Started on port ${port}`);
@@ -102,7 +101,7 @@ app.post('/users/me/propic', upload.single('picture'), authenticate, (req, res) 
       filename: file.filename,
       contentType:'image/jpeg'
       },
-      fs.createReadStream(`/tmp/${file.filename}`),
+      fs.createReadStream(`${process.cwd()}/tmp/${file.filename}`),
       function(error, createdFile){
         if (error) {
             res.status(400).send(error);
@@ -117,27 +116,23 @@ app.get('/users/me/propic', authenticate, (req, res) => {
     if (!id){
         res.status(404).send("The user has no profile picture");
     }
-    var readStream = Attachment.readById(id);
-    var writeStream = fs.createWriteStream(`/tmp/${id}`);
-    readStream.pipe(writeStream);
-    var filePath = path.join(__dirname, "../tmp", `${id}`);
-    console.log(filePath);
-    res.status(200).sendFile(filePath);
-    // Attachment.findOne({
-    //     "_id" : id
-    // },
-    // (err, file) => {
-    //     if (err) {
-    //         return res.status(400).send(err);
-    //     }
-    //     fileName = file.filename;
-    //     var readStream = Attachment.readById(id);
-    //     var writeStream = fs.createWriteStream(`tmp/${fileName}`);
-    //     readStream.pipe(writeStream);
-    //     // var path = `${__dirname}/uploads/${fileName}`;
-    //     // res.status(200).sendFile(path);
-    //     res.status(200).send();
-    // });
+    // var readStream = Attachment.readById(id);
+    // var writeStream = fs.createWriteStream(`${process.cwd()}/tmp/${id}`);
+    // readStream.pipe(writeStream);
+    // res.status(200).sendFile(`${process.cwd()}/tmp/${id}`);
+    Attachment.findOne({
+        "_id" : id
+    },
+    (err, file) => {
+        if (err) {
+            return res.status(400).send(err);
+        }
+        fileName = file.filename;
+        var readStream = Attachment.readById(id);
+        var writeStream = fs.createWriteStream(`${process.cwd()}/tmp/${fileName}`);
+        readStream.pipe(writeStream);
+        res.status(200).sendFile(`${process.cwd()}/tmp/${fileName}`);
+    });
 });
 
 app.post('/listings', authenticate, (req, res) => {
