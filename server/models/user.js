@@ -36,6 +36,11 @@ var UserSchema = new mongoose.Schema({
         required: false,
         type: mongoose.Schema.Types.ObjectId,
     },
+    location: {
+        lat: Number,
+        lon: Number,
+        required: false
+    },
     tokens: [{
         access: {
             type: String,
@@ -129,6 +134,13 @@ UserSchema.methods.setProPic = function (picture) {
     var user = this;
     user.proPic = picture._id;
     user.save();
+}
+
+UserSchema.methods.setLocation = function (location) {
+    console.log(location);
+    var user = this;
+    user.location = location;
+    return user.save();
 }
 
 var User = mongoose.model('User', UserSchema);

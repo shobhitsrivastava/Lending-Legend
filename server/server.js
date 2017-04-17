@@ -1,3 +1,4 @@
+console.log(`${process.cwd()}/tmp/`);
 require('./config/config');
 const _ = require('lodash');
 const express = require('express');
@@ -116,10 +117,6 @@ app.get('/users/me/propic', authenticate, (req, res) => {
     if (!id){
         res.status(404).send("The user has no profile picture");
     }
-    // var readStream = Attachment.readById(id);
-    // var writeStream = fs.createWriteStream(`${process.cwd()}/tmp/${id}`);
-    // readStream.pipe(writeStream);
-    // res.status(200).sendFile(`${process.cwd()}/tmp/${id}`);
     Attachment.findOne({
         "_id" : id
     },
@@ -132,6 +129,20 @@ app.get('/users/me/propic', authenticate, (req, res) => {
         var writeStream = fs.createWriteStream(`${process.cwd()}/tmp/${fileName}`);
         readStream.pipe(writeStream);
         res.status(200).sendFile(`${process.cwd()}/tmp/${fileName}`);
+    });
+});
+
+app.patch('/users/me/location', authenticate, (req, res) => {
+    if (!req.body.location) {
+        return res.status(400).send();
+    }
+    var user = req.user;
+    user.setLocation(req.body.location)
+    .then(() => {
+        res.status(200).send(user);
+    })
+    .catch((err) => {
+        res.status(400).send(err);
     });
 });
 
@@ -149,9 +160,18 @@ app.post('/listings', authenticate, (req, res) => {
     });
 });
 
+app.get('/listings/me', authenticate, (req, res) => {
+    Listing.find({
+        user: req.user._id
+    }).then((listings) => {
+        res.status(200).send(listings);
+    }).catch((e) => res.status(400).send(e));
+});
+
 app.delete('/listings/:id', authenticate, (req, res) => {
     var id = req.params.id;
     if (!ObjectID.isValid(id)) {
+        console.log("hello");
         return res.status(404).send();
     }
     Listing.findOneAndRemove({
@@ -168,28 +188,49 @@ app.delete('/listings/:id', authenticate, (req, res) => {
 
 app.patch('/listings/:id', authenticate, (req, res) => {
     var id = req.params.id;
-    var body = _.pick(req.body, ['description', 'active']);
     if (!ObjectID.isValid(id)) {
         return res.status(404).send();
     }
-    if (_.isBoolean(body.completed) && body.completed) {
-        body.completedAt = new Date().getTime();
-    } else {
-        body.completed = false;
-        body.completedAt = null;
-    }
-
-    Todo.findOneAndUpdate({
+    var body = _.pick(req.body, ["name", "description", "active", "location"]);
+    Listing.findOneAndUpdate({
         _id: id,
-        _creator: req.user._id
-    }, {$set: body}, {new: true}).then((todo => {
-        if (!todo) {
+        user: req.user._id
+    }, {$set: body}, {new: true}).then((listing => {
+        if (!listing) {
             return res.status(404).send();
         }
-        res.send({todo});
+        res.status(200).send(listing);
     })).catch((e) => {
         res.status(400).send();
     });
+});
+
+app.get('/users', authenticate, (req, res) => {
+    User.find().then((users => {
+        var list = [];
+        users.forEach((user) => {
+            if (user.location.lat) {
+                list.push({
+                    _id: user._id,
+                    location: user.location
+                });
+            }
+        });
+        res.status(200).send(list);
+    })).catch((err) => {
+        res.status(400).send(err);
+    });
+});
+
+app.get('/listings/:id', authenticate, (req, res) => {
+    var id = req.params.id;
+    Listing.find({
+        user: id
+    }).then((listings) => {
+        res.status(200).send(listings);
+    }).catch((err) => {
+        res.status(400).send(err);
+    })
 });
 
 console.log(process.env.NODE_ENV);
