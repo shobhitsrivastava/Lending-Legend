@@ -37,6 +37,7 @@ var UserSchema = new mongoose.Schema({
         type: mongoose.Schema.Types.ObjectId,
     },
     location: {
+        address: String,
         lat: Number,
         lon: Number,
         required: false
@@ -137,7 +138,6 @@ UserSchema.methods.setProPic = function (picture) {
 }
 
 UserSchema.methods.setLocation = function (location) {
-    console.log(location);
     var user = this;
     user.location = location;
     return user.save();

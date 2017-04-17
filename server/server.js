@@ -1,5 +1,6 @@
 console.log(`${process.cwd()}/tmp/`);
 require('./config/config');
+const {geocode} = require('./geocode/geocode');
 const _ = require('lodash');
 const express = require('express');
 const bodyParser = require('body-parser');
@@ -77,22 +78,6 @@ app.delete('/users/me/token', authenticate, (req, res) => {
     })
 });
 
-// app.post('/multertest', upload.single('testfile'), (req, res) => {
-//     var file = req.file;
-//     console.log(file);
-//     Attachment.write({
-//       filename: file.filename,
-//       contentType:'image/jpeg'
-//       },
-//       fs.createReadStream(`./server/uploads/${file.filename}`),
-//       function(error, createdFile){
-//         if (error) {
-//             res.status(400).send(error);
-//         }
-//         res.status(200).send(createdFile);
-//     });
-// });
-
 app.post('/users/me/propic', upload.single('picture'), authenticate, (req, res) => {
     var file = req.file;
     if (!file) {
@@ -133,16 +118,22 @@ app.get('/users/me/propic', authenticate, (req, res) => {
 });
 
 app.patch('/users/me/location', authenticate, (req, res) => {
-    if (!req.body.location) {
+    if (!req.body.address) {
         return res.status(400).send();
     }
     var user = req.user;
-    user.setLocation(req.body.location)
-    .then(() => {
-        res.status(200).send(user);
-    })
-    .catch((err) => {
-        res.status(400).send(err);
+    geocode(req.body.address, (err, results) => {
+        if (err) {
+            return res.status(400).send(err);
+        } else {
+            address = results.address;
+            lat = results.latitude;
+            lon = results.longitude;
+            user.setLocation({
+                address, lat, lon
+            });
+            res.status(200).send({address, lat, lon});
+        }
     });
 });
 
