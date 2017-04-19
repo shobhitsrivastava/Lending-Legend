@@ -223,6 +223,55 @@ app.get('/listings/:id', authenticate, (req, res) => {
         res.status(400).send(err);
     })
 });
+app.get('/users/:filter', authenticate, (req, res) => {
+    var filter = req.params.filter;
+    var listings = [];
+    Listing.find({
+        name: filter
+    }, "user", (err, results) => {
+        if (err) {
+            return res.status(400).send(err);
+        }
+        results.forEach((result) => {
+            listings.push(result);
+        });
+        var user = [];
+        listings.forEach((listing) => {
+            User.findById(listing.user, "firstName lastName location email"), (err, result) =>{
+                if (err) {
+                    res.status(400).send(err);
+                }
+                users.push(result);
+                console.log(users);
+            }
+        });
+        res.status(200).send(users);
+    });
+});
+
+app.get('/user/:id', authenticate, (req, res) => {
+    var id = req.params.id;
+    User.findById(id).then((user) => {
+        var modified = _.pick(user, ['firstName', 'lastName', 'email', 'location']);
+        res.status(200).send(modified);
+    }).catch((err) => {
+        console.log(err);
+        res.status(400).send(err);
+    })
+});
+
+app.get('/listings/by/:userId', authenticate, (req, res) => {
+    var userId = req.params.userId;
+    Listing.find({
+        user: userId,
+        active: true
+    }, (err, results) => {
+        if (err) {
+            return res.status(400).send(err);
+        }
+        res.status(200).send(results);
+    })
+})
 
 console.log(process.env.NODE_ENV);
 console.log(process.env.MONGODB_URI);
