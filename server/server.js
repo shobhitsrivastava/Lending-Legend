@@ -203,7 +203,10 @@ app.get('/users', authenticate, (req, res) => {
             if (user.location.lat) {
                 list.push({
                     _id: user._id,
-                    location: user.location
+                    location: user.location,
+                    firstName: user.firstName,
+                    lastName: user.lastName,
+                    email: user.email
                 });
             }
         });
