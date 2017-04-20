@@ -245,7 +245,7 @@ app.get('/users/:filter', authenticate, (req, res) => {
 app.get('/user/:id', authenticate, (req, res) => {
     var id = req.params.id;
     User.findById(id).then((user) => {
-        var modified = _.pick(user, ['firstName', 'lastName', 'email', 'location']);
+        var modified = _.pick(user, ['firstName', 'lastName', 'email', 'location', '_id']);
         res.status(200).send(modified);
     }).catch((err) => {
         console.log(err);
