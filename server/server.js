@@ -230,25 +230,14 @@ app.get('/users/:filter', authenticate, (req, res) => {
     var filter = req.params.filter;
     var listings = [];
     Listing.find({
-        name: filter
+        name: filter,
+        active: true
     }, "user", (err, results) => {
         if (err) {
-            return res.status(400).send(err);
+            res.status(400).send(err);
+        } else {
+            res.status(200).send(results);
         }
-        results.forEach((result) => {
-            listings.push(result);
-        });
-        var user = [];
-        listings.forEach((listing) => {
-            User.findById(listing.user, "firstName lastName location email"), (err, result) =>{
-                if (err) {
-                    res.status(400).send(err);
-                }
-                users.push(result);
-                console.log(users);
-            }
-        });
-        res.status(200).send(users);
     });
 });
 
