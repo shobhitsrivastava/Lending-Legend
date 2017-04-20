@@ -226,6 +226,7 @@ app.get('/listings/:id', authenticate, (req, res) => {
         res.status(400).send(err);
     })
 });
+
 app.get('/users/:filter', authenticate, (req, res) => {
     var filter = req.params.filter;
     var listings = [];
